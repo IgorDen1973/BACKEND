@@ -1,59 +1,57 @@
 package ru.IgorDen1973.tests;
 
-import io.restassured.response.Response;
+import io.restassured.builder.MultiPartSpecBuilder;
+import io.restassured.specification.MultiPartSpecification;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.IgorDen1973.dto.PostImageResponse;
+
 import java.io.File;
+
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
-import static org.hamcrest.core.IsNull.notNullValue;
+import static ru.IgorDen1973.Endpoints.DELETE_ID;
+import static ru.IgorDen1973.Endpoints.UPLOAD_;
+import static ru.IgorDen1973.Path2pic.REGULAR;
 
 
 public class GetRecentlyDeletedTests extends BaseTest {
 
-    private final String PATH_TO_PIC = "src/test/resources/pic_02.jpg";
-    private String array [] = new String[2];
+    private String PIC_ID;
+    MultiPartSpecification responceCheckMultiPartSpec;
 
     @BeforeEach
     void loadPictureAndGetDataTest() {
-        Response response = given()
-                .header("Authorization", token)
-                .multiPart("image", new File(PATH_TO_PIC))
-                .expect()
-                .statusCode(200)
-                .body("success", equalTo(true))
-                .contentType(notNullValue())
-                .body("data.account_url", notNullValue())
-                .body("data.id", notNullValue())
-                .when()
-                .post("https://api.imgur.com/3/upload")
-                .prettyPeek();
-        array[0]=response.jsonPath().get("data.id");
-        array[1]=response.jsonPath().get("data.deletehash");
-        }
+        responceCheckMultiPartSpec = new MultiPartSpecBuilder(new File(REGULAR.getSticker()))
+                .controlName("image")
+                .build();
+        positiveAsserts200();
+
+        PIC_ID = given(requestSpecificationWithToken)
+                .multiPart(responceCheckMultiPartSpec)
+                .post(UPLOAD_)
+                .prettyPeek()
+                .then()
+                .extract()
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
+    }
 
     @Test
     void deleteAndTryingToGetMentionedPicTest() {
-        given()
-                .headers("Authorization", token)
-                .when()
-                .delete("https://api.imgur.com/3/image/{deleteID}", array[0])
-                .then()
-                .body("success", equalTo(true))
-                .body("data", equalTo(true))
-                .header("Date",notNullValue());
+        positiveAsserts200();
+        given(requestSpecificationWithToken)
+                .delete(DELETE_ID, PIC_ID);
+
     }
 
     @AfterEach
     void tryingToGetDeletedPicTest() {
-        given()
-                .header("Authorization", token)
-                .expect()
-                .when()
-                .get("https://api.imgur.com/3/image/{deleteID}", array[0])
-                .prettyPeek()
-                .then()
-                .statusCode(404);
+        negativeAsserts404();
+        given(requestSpecificationWithToken)
+                .get(DELETE_ID, PIC_ID)
+                .prettyPeek();
     }
 }

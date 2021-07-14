@@ -1,82 +1,76 @@
 package ru.IgorDen1973.tests;
 
+import io.restassured.builder.MultiPartSpecBuilder;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.specification.MultiPartSpecification;
+import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.IgorDen1973.Path2pic;
+import ru.IgorDen1973.dto.PostImageResponse;
 
 import java.io.File;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.IsNull.notNullValue;
+import static ru.IgorDen1973.Endpoints.*;
+
 
 public class GetRequestTests extends BaseTest{
 
-    private final String PATH_TO_PIC = "src/test/resources/pic_02.jpg";
-    private String Upload_ID;
+    private String PIC_ID;
+    MultiPartSpecification pic4getMultiPartSpec;
+    static RequestSpecification requestSpecificationWithTokenAndMultipart;
 
     @BeforeEach
     void loadPictureAndGetDataTest() {
-        Upload_ID = given()
-                .header("Authorization", token)
-                .multiPart("image", new File(PATH_TO_PIC))
-                .expect()
-                .statusCode(200)
-                .body("success", equalTo(true))
-                .contentType(notNullValue())
-                .body("data.account_url", notNullValue())
-                .body("data.id", notNullValue())
-                .when()
-                .post("https://api.imgur.com/3/upload")
+
+        pic4getMultiPartSpec = new MultiPartSpecBuilder(new File(Path2pic.REGULAR.getSticker()))
+                .controlName("image")
+                .build();
+
+        requestSpecificationWithTokenAndMultipart = new RequestSpecBuilder()
+                .addHeader("Authorization", token)
+                .addParam("title","Picture")
+                .addMultiPart(pic4getMultiPartSpec)
+                .build();
+
+        PIC_ID = given(requestSpecificationWithTokenAndMultipart)
+                .post(UPLOAD_)
                 .prettyPeek()
                 .then()
                 .extract()
-                .response()
-                .jsonPath()
-                .getString("data.id");
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
     }
 
     @Test
     void getExistingPicWithTokenTest() {
-        given()
-                .header("Authorization", token)
-                .expect()
-                .statusCode(200)
-                .body("data.id",notNullValue())
-                .body("success", equalTo(true))
-                .body("data.link",notNullValue())
-                .header("Cache-Control", notNullValue())
-                .when()
-                .get("https://api.imgur.com/3/image/{Upload_ID}", Upload_ID)
-                .prettyPeek();     /* логирование в ответе */
+        positiveAsserts200();
+        given(requestSpecificationWithTokenAndMultipart)
+                .get(UPLOAD_ID, PIC_ID)
+                .prettyPeek();
     }
 
     @Test
     void getExistingPicWithClientIdTest() {
+        positiveAsserts200();
         given()
                 .header("Authorization", clientId)
-                .expect()
-                .statusCode(200)
-                .body("data.id",notNullValue())
-                .body("success", equalTo(true))
-                .body("data.link",notNullValue())
-                .header("Cache-Control", notNullValue())
                 .when()
-                .get("https://api.imgur.com/3/image/{Upload_ID}", Upload_ID)
-                .prettyPeek();     /* логирование в ответе */
+                .get(UPLOAD_ID, PIC_ID)
+                .prettyPeek();
     }
 
     @Test
     void getExistingPicUnauthorizedTest() {
+        negativeAsserts401();
         given()
-                .expect()
-                .statusCode(401)
-                .body("data.error",equalTo("Authentication required"))
-                .body("success", equalTo(false))
-                .body("data.request",notNullValue())
-                .header("Content-Type", notNullValue())
-                .when()
-                .get("https://api.imgur.com/3/image/{Upload_ID}", Upload_ID)
+                .get(UPLOAD_ID, PIC_ID)
                 .prettyPeek();
     }
 
@@ -85,7 +79,7 @@ public class GetRequestTests extends BaseTest{
         given()
                 .headers("Authorization", token)
                 .when()
-                .delete("https://api.imgur.com/3/image/{deleteID}", Upload_ID)
+                .delete(DELETE_ID, PIC_ID)
                 .prettyPeek()
                 .then()
                 .statusCode(200);

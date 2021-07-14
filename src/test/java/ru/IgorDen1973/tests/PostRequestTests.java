@@ -1,223 +1,211 @@
 package ru.IgorDen1973.tests;
 
+import io.restassured.builder.MultiPartSpecBuilder;
+import io.restassured.specification.MultiPartSpecification;
 import org.apache.commons.io.FileUtils;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import ru.IgorDen1973.dto.PostImageResponse;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Base64;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.core.IsNull.notNullValue;
+import static ru.IgorDen1973.Endpoints.DELETE_ID;
+import static ru.IgorDen1973.Endpoints.UPLOAD_;
+import static ru.IgorDen1973.Path2pic.*;
 
 public class PostRequestTests extends BaseTest {
 
-    private final String PATH_TO_PIC_1 = "src/test/resources/Response_Check.jpg";
-    private final String PATH_TO_PIC_2 = "src/test/resources/Pic_PDF.pdf";
-    private final String PATH_TO_PIC_3 = "src/test/resources/Main.java";
-    private final String PATH_TO_PIC_4 = "src/test/resources/pic_02.jpg";
-    private final String PATH_TO_PIC_5 = "src/test/resources/899.bin";
-    private String Upload_ID;
+    private String PIC_ID;
     static String encodedFile;
+    MultiPartSpecification responceCheckMultiPartSpec;
+    MultiPartSpecification pdfFileMultiPartSpec;
+    MultiPartSpecification notPixFileMultiPartSpec;
+    MultiPartSpecification binaryFileMultiPartSpec;
+    MultiPartSpecification base64MultiPartSpec;
+
 
     @Test
-    void loadPictureAllFieldsExceptAlbumTest() {
-        Upload_ID = given()
+    void loadPictureAllFieldsExceptAlbumTest()  {
+        responceCheckMultiPartSpec = new MultiPartSpecBuilder(new File(RESPONCE_CHECK.getSticker()))
+                .controlName("image")
+                .build();
+        positiveAsserts200();
+
+        PIC_ID = given()
                 .header("Authorization", token)
                 .params("type","Response.file")
                 .params("name","Response.name")
                 .params("title","Response.title")
                 .params("description","Response.description")
-                .multiPart("image", new File(PATH_TO_PIC_1))
-                .expect()
-                .statusCode(200)
-                .body("success", equalTo(true))
-                .body("data.account_url", notNullValue())
-                .body("data.name", equalTo("Response.name"))
-                .when()
-                .post("https://api.imgur.com/3/upload")
+                .multiPart(responceCheckMultiPartSpec)
+                .post(UPLOAD_)
                 .prettyPeek()
                 .then()
                 .extract()
-                .response()
-                .jsonPath()
-                .getString("data.id");
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
     }
 
     @Test
     void loadPictureJustFieldAlbumTest() {
-        Upload_ID = given()
+        responceCheckMultiPartSpec = new MultiPartSpecBuilder(new File(RESPONCE_CHECK.getSticker()))
+                .controlName("image")
+                .build();
+        negativeAsserts417();
+
+        PIC_ID = given()
                 .header("Authorization", token)
                 .params("album","Response.album")
-                .multiPart("image", new File(PATH_TO_PIC_1))
-                .expect()
-                .statusCode(417)
-                .body("success", equalTo(false))
-                .body("status", equalTo(417))
-                .body("data.error", equalTo("Internal expectation failed"))
-                .header("Connection", equalTo("close"))
-                .when()
-                .post("https://api.imgur.com/3/upload")
+                .multiPart(responceCheckMultiPartSpec)
+                .post(UPLOAD_)
                 .prettyPeek()
                 .then()
                 .extract()
-                .response()
-                .jsonPath()
-                .getString("data.id");
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
     }
 
     @Test
     void loadPictureNoFileAttachedTest() {
-        Upload_ID = given()
+        negativeAsserts400();
+        PIC_ID = given()
                 .header("Authorization", token)
                 .multiPart("image","null")
-                .expect()
-                .statusCode(400)
-                .body("success", equalTo(false))
-                .body("status", equalTo(400))
-                .body("data.error", equalTo("Bad Request"))
-                .header("Connection", equalTo("close"))
                 .when()
-                .post("https://api.imgur.com/3/upload")
+                .post(UPLOAD_)
                 .prettyPeek()
                 .then()
                 .extract()
-                .response()
-                .jsonPath()
-                .getString("data.id");
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
     }
 
     @Test
     void loadPicturePdfFormatTest() {
-        Upload_ID = given()
+        pdfFileMultiPartSpec = new MultiPartSpecBuilder(new File(PDF.getSticker()))
+                .controlName("image")
+                .build();
+        negativeAsserts417();
+
+        PIC_ID = given()
                 .header("Authorization", token)
-                .multiPart("image", new File(PATH_TO_PIC_2))
-                .expect()
-                .statusCode(417)
-                .body("success", equalTo(false))
-                .body("status", equalTo(417))
-                .body("data.error", equalTo("Internal expectation failed"))
-                .header("Connection", equalTo("close"))
+                .multiPart(pdfFileMultiPartSpec)
                 .when()
-                .post("https://api.imgur.com/3/upload")
+                .post(UPLOAD_)
                 .prettyPeek()
                 .then()
                 .extract()
-                .response()
-                .jsonPath()
-                .getString("data.id");
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
     }
 
     @Test
     void loadPictureNotImageFormatTest() {
-        Upload_ID = given()
+        notPixFileMultiPartSpec = new MultiPartSpecBuilder(new File(NOT_IMAGE.getSticker()))
+                .controlName("image")
+                .build();
+        negativeAsserts400();
+        PIC_ID = given()
                 .header("Authorization", token)
-                .multiPart("image", new File(PATH_TO_PIC_3))
-                .expect()
-                .statusCode(400)
-                .body("success", equalTo(false))
-                .body("status", equalTo(400))
-                .body("data.error", equalTo("We don't support that file type!"))
-                .header("Connection", equalTo("close"))
-                .when()
-                .post("https://api.imgur.com/3/upload")
+                .multiPart(notPixFileMultiPartSpec)
+                .post(UPLOAD_)
                 .prettyPeek()
                 .then()
                 .extract()
-                .response()
-                .jsonPath()
-                .getString("data.id");;
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
     }
 
     @Test
     void loadPictureBase64FormatTest() {
-        byte[] byteArray = getFileContent(PATH_TO_PIC_4);
+        byte[] byteArray = getFileContent(REGULAR.getSticker());
         encodedFile = Base64.getEncoder().encodeToString(byteArray);
-        Upload_ID = given()
+        base64MultiPartSpec = new MultiPartSpecBuilder(encodedFile)
+                .controlName("image")
+                .build();
+
+        positiveAsserts200();
+
+        PIC_ID = given()
                 .header("Authorization", token)
                 .log()
                 .method()
                 .log()
                 .uri()
-                .multiPart("image", encodedFile)
+                .multiPart(base64MultiPartSpec)
                 .params("type","base64")
-                .expect()
-                .statusCode(200)
-                .body("success", equalTo(true))
-                .body("data.account_url", notNullValue())
-                .body("data.size", notNullValue())
-                .body("data.id", notNullValue())
-                .header("Content-Length", notNullValue())
-                .when()
-                .post("https://api.imgur.com/3/upload")
+                .post(UPLOAD_)
                 .then()
                 .extract()
-                .response()
-                .jsonPath()
-                .getString("data.id");
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
     }
 
     @Test
     void loadPictureUrlFormatTest() {
-        Upload_ID = given()
+
+        positiveAsserts200();
+        PIC_ID = given()
                 .header("Authorization", token)
                 .multiPart("image", "https://proprikol.ru/wp-content/uploads/2020/04/kartinki-vikingi-1.jpg")
                 .params("type","url")
-                .expect()
-                .statusCode(200)
-                .body("success", equalTo(true))
-                .body("data.account_url", notNullValue())
-                .body("data.size", notNullValue())
-                .body("data.id", notNullValue())
-                .body("data.link", notNullValue())
-                .header("Content-Length", notNullValue())
-                .when()
-                .post("https://api.imgur.com/3/upload")
+                .post(UPLOAD_)
                 .prettyPeek()
                 .then()
                 .extract()
-                .response()
-                .jsonPath()
-                .getString("data.id");
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
     }
 
     @Test
     void loadPictureBinaryFormatTest() {
-        Upload_ID = given()
+        binaryFileMultiPartSpec = new MultiPartSpecBuilder(new File(BINARY.getSticker()))
+                .controlName("image")
+                .build();
+        negativeAsserts400();
+        PIC_ID = given()
                 .header("Authorization", token)
-                .multiPart("image",PATH_TO_PIC_5)
-                .expect()
-                .statusCode(400)
-                .body("success", equalTo(false))
-                .body("status", equalTo(400))
-                .body("data.error", equalTo("Bad Request"))
-                .header("Connection", equalTo("close"))
-                .when()
-                .post("https://api.imgur.com/3/upload")
+                .multiPart(binaryFileMultiPartSpec)
+                .post(UPLOAD_)
                 .prettyPeek()
                 .then()
                 .extract()
-                .response()
-                .jsonPath()
-                .getString("data.id");
+                .body()
+                .as(PostImageResponse.class)
+                .getData()
+                .getId();
     }
 
-    @AfterEach
+   @AfterEach
     void cleaningServiceTest() {
-        if (Upload_ID == null) {
+
+        if (PIC_ID == null) {
             System.out.println("************** NO NEED TO CLEAN ANYTHING THIS CASE....  *****************");
         }
         else {
+            positiveAsserts200();
         given()
                 .headers("Authorization", token)
                 .when()
-                .delete("https://api.imgur.com/3/image/{deleteID}", Upload_ID)
-                .prettyPeek()
-                .then()
-                .statusCode(200);}
+                .delete(DELETE_ID, PIC_ID)
+                .prettyPeek();}
     }
 
     private byte[] getFileContent(String path) {
@@ -229,6 +217,7 @@ public class PostRequestTests extends BaseTest {
         }
         return byteArray;
     }
+
 }
 
 
