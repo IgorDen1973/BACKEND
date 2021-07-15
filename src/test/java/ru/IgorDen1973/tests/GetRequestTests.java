@@ -13,23 +13,16 @@ import ru.IgorDen1973.dto.PostImageResponse;
 import java.io.File;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.core.IsNull.notNullValue;
 import static ru.IgorDen1973.Endpoints.*;
 
 
 public class GetRequestTests extends BaseTest{
 
     private String PIC_ID;
-    MultiPartSpecification pic4getMultiPartSpec;
     static RequestSpecification requestSpecificationWithTokenAndMultipart;
 
     @BeforeEach
     void loadPictureAndGetDataTest() {
-
-        pic4getMultiPartSpec = new MultiPartSpecBuilder(new File(Path2pic.REGULAR.getSticker()))
-                .controlName("image")
-                .build();
 
         requestSpecificationWithTokenAndMultipart = new RequestSpecBuilder()
                 .addHeader("Authorization", token)

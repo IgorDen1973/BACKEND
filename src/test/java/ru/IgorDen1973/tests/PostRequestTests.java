@@ -1,39 +1,19 @@
 package ru.IgorDen1973.tests;
 
-import io.restassured.builder.MultiPartSpecBuilder;
-import io.restassured.specification.MultiPartSpecification;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import ru.IgorDen1973.dto.PostImageResponse;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Base64;
-
 import static io.restassured.RestAssured.given;
 import static ru.IgorDen1973.Endpoints.DELETE_ID;
 import static ru.IgorDen1973.Endpoints.UPLOAD_;
-import static ru.IgorDen1973.Path2pic.*;
 
 public class PostRequestTests extends BaseTest {
-
     private String PIC_ID;
-    static String encodedFile;
-    MultiPartSpecification responceCheckMultiPartSpec;
-    MultiPartSpecification pdfFileMultiPartSpec;
-    MultiPartSpecification notPixFileMultiPartSpec;
-    MultiPartSpecification binaryFileMultiPartSpec;
-    MultiPartSpecification base64MultiPartSpec;
-
 
     @Test
     void loadPictureAllFieldsExceptAlbumTest()  {
-        responceCheckMultiPartSpec = new MultiPartSpecBuilder(new File(RESPONCE_CHECK.getSticker()))
-                .controlName("image")
-                .build();
         positiveAsserts200();
-
         PIC_ID = given()
                 .header("Authorization", token)
                 .params("type","Response.file")
@@ -53,11 +33,7 @@ public class PostRequestTests extends BaseTest {
 
     @Test
     void loadPictureJustFieldAlbumTest() {
-        responceCheckMultiPartSpec = new MultiPartSpecBuilder(new File(RESPONCE_CHECK.getSticker()))
-                .controlName("image")
-                .build();
         negativeAsserts417();
-
         PIC_ID = given()
                 .header("Authorization", token)
                 .params("album","Response.album")
@@ -91,11 +67,7 @@ public class PostRequestTests extends BaseTest {
 
     @Test
     void loadPicturePdfFormatTest() {
-        pdfFileMultiPartSpec = new MultiPartSpecBuilder(new File(PDF.getSticker()))
-                .controlName("image")
-                .build();
         negativeAsserts417();
-
         PIC_ID = given()
                 .header("Authorization", token)
                 .multiPart(pdfFileMultiPartSpec)
@@ -112,9 +84,6 @@ public class PostRequestTests extends BaseTest {
 
     @Test
     void loadPictureNotImageFormatTest() {
-        notPixFileMultiPartSpec = new MultiPartSpecBuilder(new File(NOT_IMAGE.getSticker()))
-                .controlName("image")
-                .build();
         negativeAsserts400();
         PIC_ID = given()
                 .header("Authorization", token)
@@ -131,14 +100,7 @@ public class PostRequestTests extends BaseTest {
 
     @Test
     void loadPictureBase64FormatTest() {
-        byte[] byteArray = getFileContent(REGULAR.getSticker());
-        encodedFile = Base64.getEncoder().encodeToString(byteArray);
-        base64MultiPartSpec = new MultiPartSpecBuilder(encodedFile)
-                .controlName("image")
-                .build();
-
         positiveAsserts200();
-
         PIC_ID = given()
                 .header("Authorization", token)
                 .log()
@@ -176,9 +138,6 @@ public class PostRequestTests extends BaseTest {
 
     @Test
     void loadPictureBinaryFormatTest() {
-        binaryFileMultiPartSpec = new MultiPartSpecBuilder(new File(BINARY.getSticker()))
-                .controlName("image")
-                .build();
         negativeAsserts400();
         PIC_ID = given()
                 .header("Authorization", token)
@@ -206,16 +165,6 @@ public class PostRequestTests extends BaseTest {
                 .when()
                 .delete(DELETE_ID, PIC_ID)
                 .prettyPeek();}
-    }
-
-    private byte[] getFileContent(String path) {
-        byte[] byteArray = new byte[0];
-        try {
-            byteArray = FileUtils.readFileToByteArray(new File(path));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return byteArray;
     }
 
 }

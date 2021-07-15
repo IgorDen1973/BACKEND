@@ -2,19 +2,26 @@ package ru.IgorDen1973.tests;
 
 import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
+import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.builder.ResponseSpecBuilder;
 import io.restassured.http.ContentType;
+import io.restassured.specification.MultiPartSpecification;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeAll;
+import ru.IgorDen1973.Path2pic;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Base64;
 import java.util.Properties;
 
 import static org.hamcrest.Matchers.equalTo;
+import static ru.IgorDen1973.Path2pic.*;
 
 public abstract class BaseTest {
     static Properties properties = new Properties();
@@ -27,7 +34,13 @@ public abstract class BaseTest {
     static String token;
     static String username;
     static String clientId;
-
+    static MultiPartSpecification responceCheckMultiPartSpec;
+    static MultiPartSpecification pdfFileMultiPartSpec;
+    static MultiPartSpecification notPixFileMultiPartSpec;
+    static MultiPartSpecification binaryFileMultiPartSpec;
+    static MultiPartSpecification base64MultiPartSpec ;
+    static MultiPartSpecification pic4getMultiPartSpec;
+    static String encodedFile;
 
     @BeforeAll
     static void beforeAll() {
@@ -39,8 +52,31 @@ public abstract class BaseTest {
         username = properties.getProperty("username");
         clientId = properties.getProperty("clientId");
 
+        byte[] byteArray = getFileContent(REGULAR.getSticker());
+        encodedFile = Base64.getEncoder().encodeToString(byteArray);
+
+
         requestSpecificationWithToken = new RequestSpecBuilder()
                 .addHeader("Authorization", token)
+                .build();
+
+        responceCheckMultiPartSpec = new MultiPartSpecBuilder(new File(RESPONCE_CHECK.getSticker()))
+                .controlName("image")
+                .build();
+        pdfFileMultiPartSpec = new MultiPartSpecBuilder(new File(PDF.getSticker()))
+                .controlName("image")
+                .build();
+        notPixFileMultiPartSpec = new MultiPartSpecBuilder(new File(NOT_IMAGE.getSticker()))
+                .controlName("image")
+                .build();
+        binaryFileMultiPartSpec = new MultiPartSpecBuilder(new File(BINARY.getSticker()))
+                .controlName("image")
+                .build();
+        base64MultiPartSpec = new MultiPartSpecBuilder(encodedFile)
+                .controlName("image")
+                .build();
+        pic4getMultiPartSpec = new MultiPartSpecBuilder(new File(Path2pic.REGULAR.getSticker()))
+                .controlName("image")
                 .build();
     }
 
@@ -106,6 +142,17 @@ public abstract class BaseTest {
         catch (IOException e) {
             e.printStackTrace();
         }
+
+    }
+
+    private static byte[] getFileContent(String path) {
+        byte[] byteArray = new byte[0];
+        try {
+            byteArray = FileUtils.readFileToByteArray(new File(path));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return byteArray;
     }
 
 
